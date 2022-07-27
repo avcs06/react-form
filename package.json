@@ -1,5 +1,5 @@
 {
-  "name": "react-form",
+  "name": "@avcs/react-form",
   "version": "1.0.0",
   "description": "A HOC for forms, supports dirty check, reset and save functionalities of form",
   "main": "./lib/cjs/index.js",
