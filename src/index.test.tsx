@@ -49,16 +49,10 @@ const ChildComponent: React.FC = () => {
 }
 
 const TestComponent = () => {
-  const { isFormDirty, markFormPristine, hasErrors, errors, isFormValid } = useFormContext();
+  const { isFormDirty, hasErrors, errors, handleSubmit, clearForm } = useFormContext();
 
   const submit = () => {
-    if (isFormValid()) {
-      markFormPristine(true);
-    }
-  };
-
-  const clear = () => {
-    markFormPristine();
+    handleSubmit(console.log, console.log)
   };
 
   return (
@@ -66,7 +60,7 @@ const TestComponent = () => {
       <span data-testid="errors">{'' + hasErrors}</span>
       <span data-testid="errors-b">{errors.b}</span>
       <button data-testid="submit" disabled={!isFormDirty} onClick={submit}> Submit </button>
-      <button data-testid="clear" disabled={!isFormDirty} onClick={clear}> Clear </button>
+      <button data-testid="clear" disabled={!isFormDirty} onClick={clearForm}> Clear </button>
       <ChildComponent />
     </>
   )

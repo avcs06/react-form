@@ -2,8 +2,6 @@ import React, { useEffect, useContext, useMemo, useState, useCallback } from 're
 import { isEmpty } from '../utils';
 
 import InternalFormContext from '../contexts/InternalFormContext';
-import FormContext from '../contexts/FormContext';
-
 import useSomeEffect from './useSomeEffect';
 import useDirty from './useDirty';
 
@@ -25,8 +23,10 @@ const useFormState = <T>(
     requiredErrorMessage
   }: FormStateOptions  = {}
 ): [T, React.Dispatch<React.SetStateAction<T>>, any] => {
-  const { resetAction, getPristineValue, validateRequired, setRequiredField } = useContext(InternalFormContext);
-  const { updateForm,  setFormError } = useContext(FormContext);
+  const {
+    resetAction, getPristineValue, validateRequired,
+    setRequiredField, updateForm,  setFormError
+  } = useContext(InternalFormContext);
 
   const initialData = useMemo(() => (
     { value: getPristineValue(key, defaultValue) }
