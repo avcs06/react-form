@@ -14,7 +14,7 @@ const fireClick = (element) => fireEvent(
 const initialFormData = { b: 2 };
 
 const ChildComponent: React.FC = () => {
-  const [data, setData, error] = useFormState<number>('b', {
+  const [data, setData, , error] = useFormState<number>('b', {
     validate: v => v >= 4 ? 'Error Message' : '',
     required: true,
     requiredErrorMessage: 'Required'

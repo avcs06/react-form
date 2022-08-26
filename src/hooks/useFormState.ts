@@ -22,7 +22,7 @@ const useFormState = <T>(
     required = false,
     requiredErrorMessage
   }: FormStateOptions  = {}
-): [T, React.Dispatch<React.SetStateAction<T>>, any] => {
+): [T, React.Dispatch<React.SetStateAction<T>>, boolean, any] => {
   const {
     resetAction, getPristineValue, validateRequired,
     setRequiredField, updateForm,  setFormError
@@ -70,7 +70,7 @@ const useFormState = <T>(
     setFormError(key, errorMessage)
   }, [validateRequired])
 
-  return [oData, setOData, error];
+  return [oData, setOData, isDirty, error];
 };
 
 export default useFormState;
