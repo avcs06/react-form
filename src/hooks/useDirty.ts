@@ -4,7 +4,7 @@ import useLazyEffect from './useLazyEffect';
 
 import { InternalFormContextProps, ResetAction } from '../types';
 
-type useDirtyReturn<T> = [T, React.Dispatch<React.SetStateAction<T>>, boolean, T];
+type useDirtyReturn<T> = [T, React.Dispatch<React.SetStateAction<T>>, boolean];
 
 const useDirty = <T>(
   initialData: T,
@@ -42,7 +42,7 @@ const useDirty = <T>(
     }
   }, [resetAction]);
 
-  return [data, setData, isDirty, initialDataRef.current];
+  return [data, setData, isDirty];
 };
 
 export default useDirty;

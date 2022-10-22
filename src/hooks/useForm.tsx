@@ -45,7 +45,10 @@ const useForm = (data: FormData) => {
   const [validateRequired, setValidateRequired] = useState<boolean>(false)
   const requiredFields = useRef<Map<Key, any>>(new Map())
 
-  const [formData, setFormData, isFormDirty, iFormData] = useDirty<FormData>(data, resetAction)
+  const iFormData = useRef(data)
+  iFormData.current = data
+
+  const [formData, setFormData, isFormDirty] = useDirty<FormData>(data, resetAction)
   const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors])
 
   const updateForm: InternalFormContextProps['updateForm'] =
@@ -107,12 +110,12 @@ const useForm = (data: FormData) => {
 
   const getPristineValue: InternalFormContextProps['getPristineValue'] =
     useCallback((key, defaultValue) => {
-      if (Object.prototype.hasOwnProperty.call(iFormData, key)) {
-        return iFormData[key]
+      if (Object.prototype.hasOwnProperty.call(iFormData.current, key)) {
+        return iFormData.current[key]
       }
 
       return defaultValue
-    }, [iFormData])
+    }, [])
 
   const setRequiredField: InternalFormContextProps['setRequiredField'] =
     useCallback((key, required, requiredErrorMessage) => {

@@ -46,9 +46,8 @@ const useFormState = <T>(
 
   const { errors } = formContext
 
-  const initialData = useMemo(() => (
-    { value: getPristineValue(key, defaultValue) }
-  ), [getPristineValue, key, defaultValue]);
+  const initialValue = getPristineValue(key, defaultValue);
+  const initialData = useMemo(() => ({ value: initialValue }), [initialValue]);
 
   const [data, setData, isDirty] = useDirty(initialData, resetAction);
   const [localError, setLocalError] = useState<any>(undefined)

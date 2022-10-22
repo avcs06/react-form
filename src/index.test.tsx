@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { fireEvent, render } from '@testing-library/react';
 import { useForm, useFormState, useFormContext } from '.';
 
@@ -14,8 +14,11 @@ const initialFormData = { b: 2 };
 const mockSuccessFn = jest.fn()
 const mockErrorFn = jest.fn()
 const mockValidateFn = jest.fn()
+const mockRenderCount1 = jest.fn()
+const mockRenderCount2 = jest.fn()
 
 const ChildComponent: React.FC = () => {
+  mockRenderCount2()
   const formContext = useFormContext()
   mockValidateFn(formContext)
 
@@ -25,21 +28,22 @@ const ChildComponent: React.FC = () => {
     required: true,
     requiredErrorMessage: 'Required'
   });
+  useFormState<number>('d');
 
-  const incrementData = () => {
+  const incrementData = useCallback(() => {
     setDataA((v) => (v || 0) + 1);
     setDataB((v) => (v || 0) + 1);
-  }
+  }, [])
 
-  const decrementData = () => {
+  const decrementData = useCallback(() => {
     setDataA((v) => (v || 0) - 1);
     setDataB((v) => (v || 0) - 1);
-  }
+  }, [])
 
-  const clear = () => {
+  const clear = useCallback(() => {
     setDataA(('' as unknown) as number);
     setDataB(('' as unknown) as number);
-  }
+  }, [])
 
   return (
     <>
@@ -56,10 +60,11 @@ const ChildComponent: React.FC = () => {
 }
 
 const TestComponent = ({ throwError = false }: { throwError?: boolean }) => {
+  mockRenderCount1()
   const [data, setData] = useState(initialFormData);
-  const { isFormDirty, hasErrors, errors, handleSubmit, clearForm, FormProvider } = useForm(data);
+  const {  isFormDirty, hasErrors, errors, handleSubmit, clearForm, FormProvider } = useForm(data);
 
-  const [field, setField] = useFormState<number>('c', {
+  const [field, setField, isFieldDirty] = useFormState<number>('c', {
     defaultValue: 0,
     provider: throwError ? undefined : FormProvider
   });
@@ -69,7 +74,7 @@ const TestComponent = ({ throwError = false }: { throwError?: boolean }) => {
   }
 
   const changeC = () => {
-    setField(5)
+    setField(c => c + 5)
   }
 
   const submit = () => {
@@ -82,6 +87,7 @@ const TestComponent = ({ throwError = false }: { throwError?: boolean }) => {
 
       <button data-testid="change-c" onClick={changeC}> Change </button>
       <span data-testid="value-c">{field}</span>
+      <span data-testid="dirty-c">{'' + isFieldDirty}</span>
 
       <span data-testid="errors">{'' + hasErrors}</span>
       <span data-testid="errors-b">{errors.b}</span>
@@ -265,5 +271,88 @@ describe('E2E Tests', () => {
 
   it('Should throw error', () => {
     expect(() => render(<TestComponent throwError />)).toThrow()
+  });
+});
+
+// add test cases for any faced issues so that they wont be repeated again
+// these can be deleted if they are no longer applicable
+describe('Known/Faced Issues', () => {
+  it('Should still be dirty after 2 simultaneous changes in a field', () => {
+    const { container } = render(<TestComponent />);
+    const getElement = makeGetElement(container);
+    expect(getElement('dirty-c')?.innerHTML).toBe('false')
+
+    fireClick(getElement('change-c'));
+    expect(getElement('value-c')?.innerHTML).toBe('5')
+    expect(getElement('dirty-c')?.innerHTML).toBe('true')
+
+    fireClick(getElement('change-c'));
+    expect(getElement('value-c')?.innerHTML).toBe('10')
+    expect(getElement('dirty-c')?.innerHTML).toBe('true')
+
+    fireClick(getElement('change-c'));
+    expect(getElement('value-c')?.innerHTML).toBe('15')
+    expect(getElement('dirty-c')?.innerHTML).toBe('true')
+    expect(getElement<HTMLButtonElement>('submit')?.disabled).toBe(false)
+    expect(getElement<HTMLButtonElement>('clear')?.disabled).toBe(false)
+  });
+
+
+  it('Should maintain the render count', () => {
+    jest.clearAllMocks()
+    const { container } = render(<TestComponent />);
+    const getElement = makeGetElement(container);
+
+    // mockRenderCount2 renders 2 times for any actions from child
+    // as child renders first and renders second time when parent re-renders
+    // this can be avoided by using React.memo
+
+    expect(mockRenderCount1).toHaveBeenCalledTimes(1)
+    expect(mockRenderCount2).toHaveBeenCalledTimes(1)
+
+    fireClick(getElement('clear-b'));
+    expect(mockRenderCount1).toHaveBeenCalledTimes(2)
+    expect(mockRenderCount2).toHaveBeenCalledTimes(3)
+
+    fireClick(getElement('increment'));
+    expect(mockRenderCount1).toHaveBeenCalledTimes(3)
+    expect(mockRenderCount2).toHaveBeenCalledTimes(5)
+
+    fireClick(getElement('increment'));
+    expect(mockRenderCount1).toHaveBeenCalledTimes(4)
+    expect(mockRenderCount2).toHaveBeenCalledTimes(7)
+
+    fireClick(getElement('increment'));
+    expect(mockRenderCount1).toHaveBeenCalledTimes(5)
+    expect(mockRenderCount2).toHaveBeenCalledTimes(9)
+
+
+    fireClick(getElement('increment'));
+    expect(mockRenderCount1).toHaveBeenCalledTimes(6)
+    expect(mockRenderCount2).toHaveBeenCalledTimes(11)
+
+    // error case
+    fireClick(getElement('submit'));
+    expect(mockRenderCount1).toHaveBeenCalledTimes(6)
+    expect(mockRenderCount2).toHaveBeenCalledTimes(11)
+
+    fireClick(getElement('decrement'));
+    expect(mockRenderCount1).toHaveBeenCalledTimes(7)
+    expect(mockRenderCount2).toHaveBeenCalledTimes(13)
+
+    // success case
+    fireClick(getElement('submit'));
+    expect(mockRenderCount1).toHaveBeenCalledTimes(8)
+    expect(mockRenderCount2).toHaveBeenCalledTimes(14)
+
+    fireClick(getElement('decrement'));
+    expect(mockRenderCount1).toHaveBeenCalledTimes(9)
+    expect(mockRenderCount2).toHaveBeenCalledTimes(16)
+
+    // clear re-renders twice as of now
+    // First one for resetAction change, second one for data change
+    fireClick(getElement('clear'));
+    expect(mockRenderCount1).toHaveBeenCalledTimes(11)
+    expect(mockRenderCount2).toHaveBeenCalledTimes(18)
   });
 });
