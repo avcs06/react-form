@@ -7,6 +7,7 @@ import useDirty from './useDirty';
 
 import type { ProviderComponent, Key } from '../types';
 import { E_OBJECT } from '../constants';
+import FormContext from '../contexts/FormContext';
 
 interface FormStateOptions {
   defaultValue?: any;
@@ -27,7 +28,9 @@ const useFormState = <T>(
   }: FormStateOptions  = {}
 ): [T, React.Dispatch<React.SetStateAction<T>>, boolean, any] => {
   let internalContext = useContext(InternalFormContext);
+  let formContext = useContext(FormContext);
   if (provider) {
+    formContext = provider.formContext;
     internalContext = provider.internalFormContext
   } else if (internalContext === E_OBJECT) {
     throw new Error(
@@ -40,6 +43,8 @@ const useFormState = <T>(
     resetAction, getPristineValue, validateRequired,
     setRequiredField, updateForm,  setFormError
   } = internalContext;
+
+  const { errors } = formContext
 
   const initialData = useMemo(() => (
     { value: getPristineValue(key, defaultValue) }
@@ -57,8 +62,12 @@ const useFormState = <T>(
   }, [])
 
   useEffect(() => {
-    setRequiredField(key, required)
-  }, [required])
+    setRequiredField(key, required, requiredErrorMessage)
+  }, [required, requiredErrorMessage])
+
+  useSomeEffect(() => {
+    setError(errors[key])
+  }, [errors[key] !== error])
 
   useSomeEffect(() => {
     let errorMessage;
@@ -72,16 +81,6 @@ const useFormState = <T>(
     setFormError(key, errorMessage)
     updateForm(key, oData)
   }, [isDirty && data])
-
-  useSomeEffect(() => {
-    let errorMessage;
-    if (validateRequired && isEmpty(oData)) {
-      errorMessage = requiredErrorMessage;
-    }
-
-    setError(errorMessage)
-    setFormError(key, errorMessage)
-  }, [validateRequired])
 
   return [oData, setOData, isDirty, error];
 };

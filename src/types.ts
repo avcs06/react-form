@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { PropsWithChildren } from 'react';
 import { RESET_ACTIONS } from './constants';
 
 type ValueOf<T> = T[keyof T];
 
 export type Key = string | symbol
-export interface FormData { [key: Key]: any }
+export type FormData = Record<Key, any>
 
 export type ResetAction = ValueOf<typeof RESET_ACTIONS>;
 
@@ -29,11 +29,11 @@ export interface InternalFormContextProps {
   updateForm: (key: Key, payload?: any) => void;
   setFormError: (key: Key, payload?: any) => void;
 
-  setRequiredField: (key: Key, required?: boolean) => any;
+  setRequiredField: (key: Key, required?: boolean, requiredErrorMessage?: any) => void;
   getPristineValue: (key: Key, defaultValue?: any) => any;
 }
 
-export interface ProviderComponent extends React.FC {
+export interface ProviderComponent extends React.FC<PropsWithChildren<{}>> {
   internalFormContext: InternalFormContextProps;
   formContext: FormContextProps
 }
