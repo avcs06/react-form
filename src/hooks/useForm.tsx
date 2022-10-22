@@ -1,16 +1,17 @@
 import React, { useRef, useState, useCallback, PropsWithChildren, useMemo } from 'react'
 
-import { RESET_ACTIONS } from '../constants'
 import { isEmpty } from '../utils';
 
 import InternalFormContext from '../contexts/InternalFormContext'
 import FormContext from '../contexts/FormContext'
 
-import useSomeEffect from '../hooks/useSomeEffect'
 import useLazyEffect from '../hooks/useLazyEffect'
 import useDirty from '../hooks/useDirty'
 
-import type { FormContextProps, FormData, ResetAction, InternalFormContextProps, Key, ProviderComponent } from '../types'
+import {
+  FormContextProps, FormData, InternalFormContextProps,
+  Key, ProviderComponent, ResetAction
+} from '../types'
 
 const useFormProvider = (
   internalFormContext: InternalFormContextProps,
@@ -39,7 +40,7 @@ const useFormProvider = (
 
 const useForm = (data: FormData) => {
   const [errors, setErrors] = useState<FormData>({})
-  const [resetAction, setResetAction] = useState<ResetAction>()
+  const [resetAction, setResetAction] = useState<InternalFormContextProps['resetAction']>({})
 
   const [validateRequired, setValidateRequired] = useState<boolean>(false)
   const requiredFields = useRef<Map<Key, any>>(new Map())
@@ -63,7 +64,7 @@ const useForm = (data: FormData) => {
     }, [])
 
   const markFormPristine = useCallback((keepChanges: boolean) => {
-    setResetAction(keepChanges ? RESET_ACTIONS.SAVE : RESET_ACTIONS.CLEAR)
+    setResetAction({ type: keepChanges ? ResetAction.SAVE : ResetAction.CLEAR })
   }, [])
 
   const isFormValid = useCallback(() => {
@@ -125,10 +126,6 @@ const useForm = (data: FormData) => {
   useLazyEffect(() => {
     markFormPristine(false)
   }, [data])
-
-  useSomeEffect(() => {
-    setResetAction(undefined)
-  }, [Boolean(resetAction)])
 
   const internalContext = useMemo(() => ({
     resetAction, validateRequired, updateForm, setFormError, getPristineValue, setRequiredField

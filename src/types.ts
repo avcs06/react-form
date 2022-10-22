@@ -1,12 +1,14 @@
+/* eslint-disable no-unused-vars */
 import React, { PropsWithChildren } from 'react';
-import { RESET_ACTIONS } from './constants';
 
-type ValueOf<T> = T[keyof T];
+export enum ResetAction {
+  CLEAR = 'clear',
+  SAVE = 'save'
+};
 
 export type Key = string | symbol
 export type FormData = Record<Key, any>
 
-export type ResetAction = ValueOf<typeof RESET_ACTIONS>;
 
 export type AnyFn<T extends any[]> = (...args: [...T, ...any]) => any;
 export type AnyFormDataFn = AnyFn<[FormData]>;
@@ -23,7 +25,7 @@ export interface FormContextProps {
 }
 
 export interface InternalFormContextProps {
-  resetAction?: ResetAction;
+  resetAction: { type?: ResetAction };
   validateRequired?: boolean;
 
   updateForm: (key: Key, payload?: any) => void;

@@ -1,16 +1,28 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 
-import { RESET_ACTIONS } from '../constants';
 import useLazyEffect from './useLazyEffect';
 
-import type { ResetAction } from '../types';
+import { InternalFormContextProps, ResetAction } from '../types';
 
 type useDirtyReturn<T> = [T, React.Dispatch<React.SetStateAction<T>>, boolean, T];
 
-const useDirty = <T>(initialData: T, resetAction?: ResetAction): useDirtyReturn<T> => {
+const useDirty = <T>(
+  initialData: T,
+  resetAction: InternalFormContextProps['resetAction']
+): useDirtyReturn<T> => {
   const initialDataRef = useRef<T>(initialData);
   const [data, setData] = useState<T>(initialData);
-  const isDirty = data !== initialDataRef.current;
+
+  const raCounter1 = useRef(0)
+  const raCounter2 = useMemo(() => raCounter1.current + 1, [resetAction])
+  const isDirty = useMemo(() => {
+    if (raCounter2 - raCounter1.current) {
+      raCounter1.current += 1;
+      return false;
+    }
+
+    return data !== initialDataRef.current
+  }, [raCounter2, data]);
 
   useLazyEffect(() => {
     initialDataRef.current = initialData;
@@ -18,11 +30,11 @@ const useDirty = <T>(initialData: T, resetAction?: ResetAction): useDirtyReturn<
   }, [initialData]);
 
   useLazyEffect(() => {
-    switch (resetAction) {
-      case RESET_ACTIONS.CLEAR:
+    switch (resetAction.type) {
+      case ResetAction.CLEAR:
         setData(initialDataRef.current);
         break;
-      case RESET_ACTIONS.SAVE:
+      case ResetAction.SAVE:
         initialDataRef.current = data;
         break;
       default:

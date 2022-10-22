@@ -5,9 +5,9 @@ import InternalFormContext from '../contexts/InternalFormContext';
 import useSomeEffect from './useSomeEffect';
 import useDirty from './useDirty';
 
-import type { ProviderComponent, Key } from '../types';
 import { E_OBJECT } from '../constants';
 import FormContext from '../contexts/FormContext';
+import { ProviderComponent, Key } from '../types';
 
 interface FormStateOptions {
   defaultValue?: any;
@@ -51,7 +51,8 @@ const useFormState = <T>(
   ), [getPristineValue, key, defaultValue]);
 
   const [data, setData, isDirty] = useDirty(initialData, resetAction);
-  const [error, setError] = useState<any>(undefined)
+  const [localError, setLocalError] = useState<any>(undefined)
+  const error = useMemo(() => localError || errors[key], [errors[key], localError])
 
   const oData: T = useMemo(() => data.value, [data]);
   const setOData = useCallback((val: T) => {
@@ -66,10 +67,6 @@ const useFormState = <T>(
   }, [required, requiredErrorMessage])
 
   useSomeEffect(() => {
-    setError(errors[key])
-  }, [errors[key] !== error])
-
-  useSomeEffect(() => {
     let errorMessage;
     if (validateRequired && isEmpty(oData)) {
       errorMessage = requiredErrorMessage;
@@ -77,7 +74,7 @@ const useFormState = <T>(
       errorMessage = validate(oData) || undefined;
     }
 
-    setError(errorMessage)
+    setLocalError(errorMessage)
     setFormError(key, errorMessage)
     updateForm(key, oData)
   }, [isDirty && data])
