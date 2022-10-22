@@ -1,29 +1,34 @@
-# react-form
-A context based react form. Supports Dirty check, validation, reset and save functionalities of form
 
-### Installation
+# react-form
+A context & hook based react form. Supports Dirty-check, Validation, Reset and Save functionalities of form
+
+## Installation
 ```bash
  npm i --save @avcs/react-form
 ```
 
-### Documentation
+## Documentation
 ```javascript
-FormProvider: ReactComponent
+useForm: ReactHook
 
-props: {
-  data: { [string | symbol]: any } // Initial form data
-}
-```
-
-```javascript
-useFormContext: ReactHook
+arguments: [
+  // initial form object
+  form: { [string | symbol]: any };
+]
 
 returnValue: {
-  formData: { [string | symbol]: any }; // current form data
-  isFormDirty: boolean; // true if current form data is different from last known pristine state
+  // current form data
+  formData: { [string | symbol]: any };
+ 
+  // true if current form data is different from 
+  //   last known pristine state
+  isFormDirty: boolean; 
 
-  errors: { [string | symbol]: any }; // collected errors across the form
-  hasErrors: boolean; // true if form has errors
+  // collected errors across the form
+  errors: { [string | symbol]: any }; 
+
+  // true if form has errors
+  hasErrors: boolean; 
 
   /* Handle submit action, accepts 2 params onSubmit & onError
    *   validates required errors, if there are no errors will mark the current formState as pristine
@@ -38,6 +43,22 @@ returnValue: {
   
   // Resets the form to last known pristine state
   clearForm: () => void;
+  
+  /* Provider to wrap any child components with,
+   *   so that they and useFormState in them can access FormContext
+   * 
+   * If using useFormState in the same component where useForm is used, 
+   *   this can be passed in options.provider to useFormState
+   */
+  FormProvider: React.Element
+}
+```
+
+```javascript
+useFormContext: ReactHook
+
+returnValue: {
+  // Same as useForm except FormProvider
 }
 ```
 
@@ -45,20 +66,34 @@ returnValue: {
 useFormState<T>: ReactHook
 
 arguments: [
-  key: string | symbol, // key to identify which value from form, this field is associated with
+  // key to identify which value from form,
+  //   this field is associated with
+  key: string | symbol,
+  // Options for this field
   {
-    defaultValue: any, // default value is applied if the key doesnt exist in the initial form
-    validate: (value: any) => any | undefined, // validate the value and return error or undefined if no errors
-    required: boolean, // Validates value for required on submit, if true
-    requiredErrorMessage: any, // Error info to record when there is a require error
+    // default value is applied if the key doesn't exist in the initial form
+    defaultValue?: any,
+    // validate the value and return error or undefined if no errors
+    validate?: (value: any) => any | undefined,
+    // Validates value for required on submit, if true
+    required?: boolean,
+    // Error info to record when there is a require error
+    requiredErrorMessage?: any,
+    // Pass the Provider manually if this hook is not used inside a component thats wrapped in Provider
+    provider?: React.Element
   }
 ]
 
 returnValue: [
-  state: T, // current state of the field
-  setState: ReactSetState<T>, // setState method for the field
-  isDirty: boolean, // true if current state of the field is different from last known pristine state
-  error: any, // error info if the state is not valid
+  // current state of the field
+  state: T,
+  // setState method for the field
+  setState: ReactSetState<T>,
+  // true if current state of the field is
+  //   different from last known pristine state
+  isDirty: boolean,
+  // error info if the state is not valid
+  error: any,
 ]
 ```
 
@@ -66,44 +101,37 @@ returnValue: [
 
 > Example: You can pass reference to the error node so you can scroll to specific error when clicking submit
 
-### Usage
-You need following 3 entities for using react-form, `FormContainer`, `Form` and `FormField`.
+## Usage
+Can be used in 2 different formats. Form & Fields in a single component or in separate components,
+please refer below for an example of both the use cases
 
-> You can combine the `Form` and `FormField` entities inside a single component if necessary.
-
-> For this example we will create separate components for both.
-
-##### FormContainer
-You can provide initial form data in this entity. This entity should wrap all `Form` and `FormField` entities related to this form.
-
-```javascript
-// FormContainer.tsx
-import React from 'react';
-import { FormProvider } from '@avcs/react-form';
-
-const FormContainer = () => {
-  const [form, setForm] = useState({});
-  
-  return (
-    <FormProvider data={form}>
-      <Form />
-    </FormProvider>
-  );
-};
-
-export default FormContainer;
-```
-
-#### Form
-You can handle your submit, reset, dirty check and global validation in this entity
-
+### Form
 ```javascript
 // Form.tsx
 import React from 'react';
-import { useFormContext } from '@avcs/react-form';
+import { useForm } from '@avcs/react-form';
 
 const Form = () => {
-  const { formData, isFormDirty, hasErrors, errors, handleSubmit, clearForm } = useFormContext();
+  const {
+    formData, isFormDirty, hasErrors, errors,
+    handleSubmit, clearForm, FormProvider
+  } = useForm(initialForm);
+
+  // using useFormField in the same component as useForm
+  // check how we are passing provider here but not in FormField component
+  const [field, setField, isFieldDirty, fieldError] = useFormField(key, {
+    defaultValue:  'some value',
+    validate:  (value)  =>  {
+      if  (value !==  'some value')  return  'some error';
+    },
+    required:  true,
+    requiredErrorMessage:  'this field is required',
+    provider: FormProvider
+  });
+  
+  const handleChange = useCallback((e) => {
+    setData(e.target.value);
+  }, []);
   
   const submitForm = useCallback((e) => {
     handleSubmit(
@@ -118,7 +146,15 @@ const Form = () => {
 
   return (
     <form>
-      {/* Form Contents */}
+      {/* OPTION 1: using form fields separately,
+          see below for definition of FormField */}
+      <FormProvider>
+        <FormField />
+      </FormProvider>
+	  
+      {/* OPTION 2: using form field in same component as form */}
+      <input type="text" onChange={handleChange} value={field}  />
+	  
       <button disabled={!isFormDirty} onClick={submitForm}>Submit</input>
       <button disabled={!isFormDirty} onClick={clearForm}>Clear</button>
     </form>
@@ -128,27 +164,18 @@ const Form = () => {
 export default Form;
 ```
 
-#### FormField
-You can handle the state, dirty check and error management of single form field in this entity
-
+### FormField
 ```javascript
   import React from 'react';
   import { useFormState } from '@avcs/react-form';
 
   const FormField = () => {
     const [data, setData, isDirty, error] = useFormState(key, {
-      // default value is applied if the key doesnt exist in the initial form
       defaultValue: 'some value',
-
-      // validate method to validate the value
       validate: (value) => {
-        if (value !== 'some value') return 'some error'
+        if (value !== 'some value') return 'some error';
       },
-
-      // Validates value for required on submit, if true
       required: true,
-
-      // Message to show if the field is required and value is empty
       requiredErrorMessage: 'this field is required',
     });
 
