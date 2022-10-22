@@ -5,13 +5,15 @@ import InternalFormContext from '../contexts/InternalFormContext';
 import useSomeEffect from './useSomeEffect';
 import useDirty from './useDirty';
 
-import type { Key } from '../types';
+import type { ProviderComponent, Key } from '../types';
+import { E_OBJECT } from '../constants';
 
 interface FormStateOptions {
   defaultValue?: any;
   validate?: (value: any) => any;
   required?: boolean;
-  requiredErrorMessage?: any
+  requiredErrorMessage?: any;
+  provider?: ProviderComponent
 }
 
 const useFormState = <T>(
@@ -20,13 +22,24 @@ const useFormState = <T>(
     defaultValue = undefined,
     validate = () => undefined,
     required = false,
-    requiredErrorMessage
+    requiredErrorMessage,
+    provider
   }: FormStateOptions  = {}
 ): [T, React.Dispatch<React.SetStateAction<T>>, boolean, any] => {
+  let internalContext = useContext(InternalFormContext);
+  if (provider) {
+    internalContext = provider.internalFormContext
+  } else if (internalContext === E_OBJECT) {
+    throw new Error(
+      'useFormState should either be wrapped inside a FormProvider ' +
+      'or should be called with provider in options'
+    )
+  }
+
   const {
     resetAction, getPristineValue, validateRequired,
     setRequiredField, updateForm,  setFormError
-  } = useContext(InternalFormContext);
+  } = internalContext;
 
   const initialData = useMemo(() => (
     { value: getPristineValue(key, defaultValue) }

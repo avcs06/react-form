@@ -10,9 +10,34 @@ import useSomeEffect from '../hooks/useSomeEffect'
 import useLazyEffect from '../hooks/useLazyEffect'
 import useDirty from '../hooks/useDirty'
 
-import type { FormContextProps, FormData, ResetAction, InternalFormContextProps, Key } from '../types'
+import type { FormContextProps, FormData, ResetAction, InternalFormContextProps, Key, ProviderComponent } from '../types'
 
-export const FormProvider = ({ data, children }: PropsWithChildren<{ data: FormData }>) => {
+const useFormProvider = (
+  internalFormContext: InternalFormContextProps,
+  formContext: FormContextProps
+): ProviderComponent => {
+  const Provider = useMemo<React.FC>(() => {
+    const ProviderComponent = ({ children }: PropsWithChildren<{}>) => {
+      const { internalFormContext, formContext } = (Provider as ProviderComponent);
+
+      return (
+        <InternalFormContext.Provider value={internalFormContext}>
+          <FormContext.Provider value={formContext}>
+            {children}
+          </FormContext.Provider>
+        </InternalFormContext.Provider>
+      )
+    }
+
+    return ProviderComponent;
+  }, []);
+
+  (Provider as ProviderComponent).internalFormContext = internalFormContext;
+  (Provider as ProviderComponent).formContext = formContext;
+  return (Provider as ProviderComponent)
+}
+
+const useForm = (data: FormData) => {
   const [errors, setErrors] = useState<Object>({})
   const [resetAction, setResetAction] = useState<ResetAction>()
 
@@ -85,11 +110,12 @@ export const FormProvider = ({ data, children }: PropsWithChildren<{ data: FormD
     formData, isFormDirty, errors, hasErrors, handleSubmit, clearForm
   }), [formData, isFormDirty, errors, hasErrors, handleSubmit, clearForm])
 
-  return (
-    <InternalFormContext.Provider value={internalContext}>
-      <FormContext.Provider value={formContext}>
-        {children}
-      </FormContext.Provider>
-    </InternalFormContext.Provider>
-  );
-};
+  const FormProvider = useFormProvider(internalContext, formContext);
+
+  return {
+    ...formContext,
+    FormProvider
+  }
+}
+
+export default useForm;

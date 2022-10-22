@@ -1,3 +1,4 @@
+import React from 'react';
 import { RESET_ACTIONS } from './constants';
 
 type ValueOf<T> = T[keyof T];
@@ -30,4 +31,9 @@ export interface InternalFormContextProps {
 
   setRequiredField: (key: Key, required?: boolean) => any;
   getPristineValue: (key: Key, defaultValue?: any) => any;
+}
+
+export interface ProviderComponent extends React.FC {
+  internalFormContext: InternalFormContextProps;
+  formContext: FormContextProps
 }
