@@ -3,18 +3,21 @@
 A context & hook based react form. Supports dirty-check, validation, reset and save functionalities of form
 
 ## Features
-- Dirty checks for both individual fields and whole form
-- Marks current values as pristine on successful submit
-- Reset the complete form to last known pristine values with a single method
+- Dirty Checking
+  - Dirty checks for both individual fields and whole form
+  - Marks current values as pristine on successful submit
+  - Single method tp reset the complete form to last known pristine values
 
-- Supports writing your own custom validation rules
-- Live validation at both individual field level and whole form level
-- Does not check for required field errors until first submit
-- Live validation for required fields after first submit
+- Validation
+  - Supports writing your own custom validation rules
+  - Live validation at both individual field level and whole form level
+  - Does not check for required field errors until first submit
+  - Live validation for required fields after first submit
 
-- Supports changing the initial form data
-- Pure API, can be integrated with all available UI libraries seamlessly
-- [Small size](https://bundlephobia.com/package/@avcs/react-form) and no [dependencies](https://github.com/avcs06/react-form/blob/master/package.json#L32)
+- General
+  - Supports changing the initial form data
+  - Pure API, can be integrated with all available UI libraries seamlessly
+  - [Small size, tree-shakable and no dependancies](https://bundlephobia.com/package/@avcs/react-form)
 
 ## Installation
 ```bash
@@ -35,10 +38,10 @@ arguments: [{
 }]
 
 returnValue: {
-  /* Handle submit action, accepts 2 params onSubmit & onError
-   *   validates required errors, if there are no errors will mark the current formState as pristine
+  /* Handle submit action, accepts 2 params onSubmit & onError. validates required errors
    *     any changes from this state will be considered dirty in future
    *   will execute onSubmit if there are no errors
+   *   will mark the form as pristine if onSubmit returns anything other than false
    *   will execute onError if there are any errors
    */
   handleSubmit: (

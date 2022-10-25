@@ -121,12 +121,12 @@ const useForm = (
   }, [])
 
   const handleSubmit: FormContextProps['handleSubmit'] =
-    usePersistentCallback((onSubmit, onError) => {
+    usePersistentCallback(async (onSubmit, onError) => {
       const oldErrors = errors.current;
 
       if (isFormValid()) {
-        markFormPristine(true);
-        onSubmit(formData.current);
+        const isSuccessful = await onSubmit(formData.current);
+        if (isSuccessful !== false) markFormPristine(true);
         return;
       }
 

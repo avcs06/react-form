@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { fireEvent, render } from '@testing-library/react';
+import {  fireEvent, render, waitFor } from '@testing-library/react';
 import { useForm, useFormState, useFormContext } from '.';
 import { FormData } from './types';
 
@@ -130,7 +130,7 @@ const makeGetElement = (container: HTMLElement) => {
 }
 
 describe('E2E Tests', () => {
-  it('Dirty workflow onChange', () => {
+  it('Dirty workflow onChange', async () => {
     const { container } = render(<TestComponent />);
     const getElement = makeGetElement(container)
 
@@ -151,7 +151,7 @@ describe('E2E Tests', () => {
     expect(getElement('value-b')?.innerHTML).toBe('1')
   });
 
-  it('Dirty workflow onSubmit', () => {
+  it('Dirty workflow onSubmit', async () => {
     const { container } = render(<TestComponent />);
     const getElement = makeGetElement(container)
 
@@ -159,19 +159,21 @@ describe('E2E Tests', () => {
     expect(getElement('dirty-b')?.innerHTML).toBe('false')
     expect(getElement('value-b')?.innerHTML).toBe('2')
 
-    fireClick(getElement('increment'));
+    fireClick(getElement('increment'))
     expect(getElement('dirty')?.innerHTML).toBe('true')
     expect(getElement('dirty-b')?.innerHTML).toBe('true')
     expect(getElement('value-b')?.innerHTML).toBe('3')
 
 
     fireClick(getElement('submit'));
-    expect(getElement('dirty')?.innerHTML).toBe('false')
-    expect(getElement('dirty-b')?.innerHTML).toBe('false')
-    expect(getElement('value-b')?.innerHTML).toBe('3')
+    await waitFor(() => {
+      expect(getElement('dirty')?.innerHTML).toBe('false')
+      expect(getElement('dirty-b')?.innerHTML).toBe('false')
+      expect(getElement('value-b')?.innerHTML).toBe('3')
+    })
   });
 
-  it('Dirty workflow onClear', () => {
+  it('Dirty workflow onClear', async () => {
     const { container } = render(<TestComponent />);
     const getElement = makeGetElement(container)
 
@@ -184,7 +186,6 @@ describe('E2E Tests', () => {
     expect(getElement('dirty')?.innerHTML).toBe('true')
     expect(getElement('dirty-b')?.innerHTML).toBe('true')
     expect(getElement('value-b')?.innerHTML).toBe('3')
-
 
     fireClick(getElement('clear'));
     expect(getElement('dirty')?.innerHTML).toBe('false')
@@ -210,7 +211,7 @@ describe('E2E Tests', () => {
     expect(getElement('errors-b')?.innerHTML).toBe('')
   });
 
-  it('Required Error workflow', () => {
+  it('Required Error workflow', async () => {
     const { container } = render(<TestComponent />);
     const getElement = makeGetElement(container)
 
@@ -221,10 +222,12 @@ describe('E2E Tests', () => {
     expect(getElement('errors-b')?.innerHTML).toBe('')
 
     fireClick(getElement('submit'));
-    expect(getElement('value-b')?.innerHTML).toBe('')
-    expect(getElement('error-b')?.innerHTML).toBe('Required')
-    expect(getElement('errors')?.innerHTML).toBe('true')
-    expect(getElement('errors-b')?.innerHTML).toBe('Required');
+    await waitFor(() => {
+      expect(getElement('value-b')?.innerHTML).toBe('')
+      expect(getElement('error-b')?.innerHTML).toBe('Required')
+      expect(getElement('errors')?.innerHTML).toBe('true')
+      expect(getElement('errors-b')?.innerHTML).toBe('Required');
+    })
 
     fireClick(getElement('increment'));
     expect(getElement('value-b')?.innerHTML).toBe('1')
@@ -252,27 +255,32 @@ describe('E2E Tests', () => {
     jest.clearAllMocks()
     fireClick(getElement('clear-b'))
     fireClick(getElement('submit'));
-    expect(mockSuccessFn).not.toHaveBeenCalled()
-    expect(mockErrorFn).toHaveBeenCalledWith({ b: 'Required' })
+    await waitFor(() => {
+      expect(mockSuccessFn).not.toHaveBeenCalled()
+      expect(mockErrorFn).toHaveBeenCalledWith({ b: 'Required' })
+    })
 
     // succesful submit
     jest.clearAllMocks()
     fireClick(getElement('clear'));
     fireClick(getElement('increment'));
     fireClick(getElement('submit'));
-    expect(mockSuccessFn).toHaveBeenCalledWith({ a: 1, b: 3 })
-    expect(mockErrorFn).not.toHaveBeenCalled()
+    await waitFor(async () => {
+      expect(mockSuccessFn).toHaveBeenCalledWith({ a: 1, b: 3 })
+      expect(mockErrorFn).not.toHaveBeenCalled()
 
-    global.check = true
-    // validation error
-    jest.clearAllMocks()
-    fireClick(getElement('increment'));
-    fireClick(getElement('submit'));
-    expect(mockSuccessFn).not.toHaveBeenCalled()
-    expect(mockErrorFn).toHaveBeenCalledWith({ b: 'Error Message' })
+      // validation error
+      jest.clearAllMocks()
+      fireClick(getElement('increment'))
+      fireClick(getElement('submit'));
+      await waitFor(() => {
+        expect(mockSuccessFn).not.toHaveBeenCalled()
+        expect(mockErrorFn).toHaveBeenCalledWith({ b: 'Error Message' })
+      })
+    })
   });
 
-  it('Field without Provider', () => {
+  it('Field without Provider', async () => {
     jest.clearAllMocks()
     const { container } = render(<TestComponent />);
     const getElement = makeGetElement(container);
@@ -284,7 +292,9 @@ describe('E2E Tests', () => {
     expect(getElement('value-c')?.innerHTML).toBe('5')
 
     fireClick(getElement('submit'));
-    expect(mockSuccessFn).toHaveBeenCalledWith({ b: 2, c: 5 })
+    await waitFor(() => {
+      expect(mockSuccessFn).toHaveBeenCalledWith({ b: 2, c: 5 })
+    })
   });
 
   it('Should throw error', () => {
@@ -315,7 +325,7 @@ describe('Known/Faced Issues', () => {
     expect(getElement<HTMLButtonElement>('clear')?.disabled).toBe(false)
   });
 
-  it('Should maintain the render count 1', () => {
+  it('Should maintain the render count 1', async () => {
     jest.clearAllMocks()
     const { container } = render(<TestComponent  renderCount/>);
     const getElement = makeGetElement(container);
@@ -355,8 +365,10 @@ describe('Known/Faced Issues', () => {
 
     // success case
     fireClick(getElement('submit'));
-    expect(mockRenderCount1).toHaveBeenCalledTimes(2)
-    expect(mockRenderCount2).toHaveBeenCalledTimes(8)
+    await waitFor(() => {
+      expect(mockRenderCount1).toHaveBeenCalledTimes(2)
+      expect(mockRenderCount2).toHaveBeenCalledTimes(8)
+    })
 
     fireClick(getElement('decrement'));
     expect(mockRenderCount1).toHaveBeenCalledTimes(2)
@@ -367,7 +379,7 @@ describe('Known/Faced Issues', () => {
     expect(mockRenderCount2).toHaveBeenCalledTimes(10)
   });
 
-  it('Should maintain the render count 2', () => {
+  it('Should maintain the render count 2', async () => {
     jest.clearAllMocks()
     const { container } = render(<TestComponent />);
     const getElement = makeGetElement(container);
@@ -410,8 +422,10 @@ describe('Known/Faced Issues', () => {
     // success case
     fireClick(getElement('submit'));
     // formDirty changed from true to false
-    expect(mockRenderCount1).toHaveBeenCalledTimes(5)
-    expect(mockRenderCount2).toHaveBeenCalledTimes(8)
+    await waitFor(() => {
+      expect(mockRenderCount1).toHaveBeenCalledTimes(5)
+      expect(mockRenderCount2).toHaveBeenCalledTimes(8)
+    })
 
     fireClick(getElement('decrement'));
     // formDirty changed from false to true
