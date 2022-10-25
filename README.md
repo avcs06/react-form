@@ -6,11 +6,15 @@ A context & hook based react form. Supports dirty-check, validation, reset and s
 - Dirty checks for both individual fields and whole form
 - Marks current values as pristine on successful submit
 - Reset the complete form to last known pristine values with a single method
+
+- Supports writing your own custom validation rules
 - Live validation at both individual field level and whole form level
 - Does not check for required field errors until first submit
 - Live validation for required fields after first submit
-- Support for changing the initial form data when needed
-- Pure API, can be integrated with all available UI libraries manually
+
+- Supports changing the initial form data
+- Pure API, can be integrated with all available UI libraries seamlessly
+- [Small size](https://bundlephobia.com/package/@avcs/react-form) and no [dependencies](https://github.com/avcs06/react-form/blob/master/package.json#L32)
 
 ## Installation
 ```bash
