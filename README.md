@@ -17,7 +17,7 @@ A context & hook based react form. Supports dirty-check, validation, reset and s
 - General
   - Supports changing the initial form data
   - Pure API, can be integrated with all available UI libraries seamlessly
-  - [Small size, tree-shakable and no dependancies](https://bundlephobia.com/package/@avcs/react-form)
+  - [Small size, tree-shakable and no dependancies](https://bundlephobia.com/package/@avcs/react-form@latest)
 
 ## Installation
 ```bash
