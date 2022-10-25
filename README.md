@@ -1,6 +1,16 @@
 
 # react-form
-A context & hook based react form. Supports Dirty-check, Validation, Reset and Save functionalities of form
+A context & hook based react form. Supports dirty-check, validation, reset and save functionalities of form
+
+## Features
+- Dirty checks for both individual fields and whole form
+- Marks current values as pristine on successful submit
+- Reset the complete form to last known pristine values with a single method
+- Live validation at both individual field level and whole form level
+- Does not check for required field errors until first submit
+- Live validation for required fields after first submit
+- Support for changing the initial form data when needed
+- Pure API, can be integrated with all available UI libraries manually
 
 ## Installation
 ```bash
@@ -8,28 +18,19 @@ A context & hook based react form. Supports Dirty-check, Validation, Reset and S
 ```
 
 ## Documentation
-```javascript
+```typescript
 useForm: ReactHook
 
-arguments: [
+arguments: [{
   // initial form object
-  form: { [string | symbol]: any };
-]
+  formData: { [string | symbol]: any };\
+  // Optional Event handler if you want to listen to changes in form
+  onFormChange?: (formMeta: { isFormDirty: boolean, formData: { [string | symbol]: any } }) => void;
+  // Optional Event handler if you want to listen to changes in form errors
+  onErrorChange?: (errorMeta: { hasErrors: boolean, errors: { [string | symbol]: any } }) => void;
+}]
 
 returnValue: {
-  // current form data
-  formData: { [string | symbol]: any };
- 
-  // true if current form data is different from 
-  //   last known pristine state
-  isFormDirty: boolean; 
-
-  // collected errors across the form
-  errors: { [string | symbol]: any }; 
-
-  // true if form has errors
-  hasErrors: boolean; 
-
   /* Handle submit action, accepts 2 params onSubmit & onError
    *   validates required errors, if there are no errors will mark the current formState as pristine
    *     any changes from this state will be considered dirty in future
@@ -40,21 +41,21 @@ returnValue: {
     onSubmit: (formData: { [string | symbol]: any }) => any,
     onError: (errors: { [string | symbol]: any }) => any
   ) => void;
-  
+
   // Resets the form to last known pristine state
   clearForm: () => void;
-  
+
   /* Provider to wrap any child components with,
    *   so that they and useFormState in them can access FormContext
-   * 
-   * If using useFormState in the same component where useForm is used, 
+   *
+   * If using useFormState in the same component where useForm is used,
    *   this can be passed in options.provider to useFormState
    */
   FormProvider: React.Element
 }
 ```
 
-```javascript
+```typescript
 useFormContext: ReactHook
 
 returnValue: {
@@ -62,7 +63,7 @@ returnValue: {
 }
 ```
 
-```javascript
+```typescript
 useFormState<T>: ReactHook
 
 arguments: [
@@ -106,16 +107,15 @@ Can be used in 2 different formats. Form & Fields in a single component or in se
 please refer below for an example of both the use cases
 
 ### Form
-```javascript
+```typescript
 // Form.tsx
 import React from 'react';
 import { useForm } from '@avcs/react-form';
 
 const Form = () => {
   const {
-    formData, isFormDirty, hasErrors, errors,
     handleSubmit, clearForm, FormProvider
-  } = useForm(initialForm);
+  } = useForm({ formData: initialForm });
 
   // using useFormField in the same component as useForm
   // check how we are passing provider here but not in FormField component
@@ -128,11 +128,11 @@ const Form = () => {
     requiredErrorMessage:  'this field is required',
     provider: FormProvider
   });
-  
+
   const handleChange = useCallback((e) => {
     setData(e.target.value);
   }, []);
-  
+
   const submitForm = useCallback((e) => {
     handleSubmit(
       formData => {
@@ -151,12 +151,12 @@ const Form = () => {
       <FormProvider>
         <FormField />
       </FormProvider>
-	  
+
       {/* OPTION 2: using form field in same component as form */}
       <input type="text" onChange={handleChange} value={field}  />
-	  
-      <button disabled={!isFormDirty} onClick={submitForm}>Submit</input>
-      <button disabled={!isFormDirty} onClick={clearForm}>Clear</button>
+
+      <button onClick={submitForm}>Submit</input>
+      <button onClick={clearForm}>Clear</button>
     </form>
   );
 };
@@ -165,7 +165,7 @@ export default Form;
 ```
 
 ### FormField
-```javascript
+```typescript
   import React from 'react';
   import { useFormState } from '@avcs/react-form';
 
@@ -190,3 +190,10 @@ export default Form;
 
   export default FormField;
 ```
+
+## Performance
+- **useForm**: re-renders once per load, submit, reset
+- **useFormContext**: re-renders once per load
+- **useFormField**: re-renders once per load, submit, reset, value-change
+- **onFormChange**: triggers once per value-change
+- **oErrorChange**: triggers once per error-change (adding a new error, clearing an error)

@@ -5,6 +5,7 @@ module.exports = {
   },
   extends: [
     'plugin:react/recommended',
+    "plugin:react-hooks/recommended",
     "plugin:jest/recommended",
     'standard',
     'prettier'
@@ -22,5 +23,7 @@ module.exports = {
     '@typescript-eslint',
     "jest"
   ],
-  rules: {}
+  rules: {
+    "react-hooks/exhaustive-deps": "error"
+  }
 }

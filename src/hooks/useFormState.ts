@@ -1,4 +1,4 @@
-import React, { useEffect, useContext, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useContext, useMemo, useCallback } from 'react';
 import { isEmpty } from '../utils';
 
 import InternalFormContext from '../contexts/InternalFormContext';
@@ -6,8 +6,9 @@ import useSomeEffect from './useSomeEffect';
 import useDirty from './useDirty';
 
 import { E_OBJECT } from '../constants';
-import FormContext from '../contexts/FormContext';
 import { ProviderComponent, Key } from '../types';
+import useDidChange from './useDidChange';
+import useLazyEffect from './useLazyEffect';
 
 interface FormStateOptions {
   defaultValue?: any;
@@ -28,9 +29,7 @@ const useFormState = <T>(
   }: FormStateOptions  = {}
 ): [T, React.Dispatch<React.SetStateAction<T>>, boolean, any] => {
   let internalContext = useContext(InternalFormContext);
-  let formContext = useContext(FormContext);
   if (provider) {
-    formContext = provider.formContext;
     internalContext = provider.internalFormContext
   } else if (internalContext === E_OBJECT) {
     throw new Error(
@@ -40,45 +39,47 @@ const useFormState = <T>(
   }
 
   const {
-    resetAction, getPristineValue, validateRequired,
-    setRequiredField, updateForm,  setFormError
+    resetFields, resetErrors, getPristineValue, validateRequired,
+    setRequiredField, updateForm,  setFormError, getFieldError
   } = internalContext;
-
-  const { errors } = formContext
 
   const initialValue = getPristineValue(key, defaultValue);
   const initialData = useMemo(() => ({ value: initialValue }), [initialValue]);
+  const [data, setData, isDirty] = useDirty(initialData, resetFields);
 
-  const [data, setData, isDirty] = useDirty(initialData, resetAction);
-  const [localError, setLocalError] = useState<any>(undefined)
-  const error = useMemo(() => localError || errors[key], [errors[key], localError])
+  const oData: T = data.value;
+  const setOData =
+    useCallback<React.Dispatch<React.SetStateAction<T>>>((val) => {
+      if (typeof val === 'function')
+        setData(({ value }) => ({
+          value: (val as (prevState: T) => T)(value)
+        }))
+      else
+        setData({ value: val })
+    }, [setData])
 
-  const oData: T = useMemo(() => data.value, [data]);
-  const setOData = useCallback((val: T) => {
-    if (typeof val === 'function')
-      setData(({ value }) => ({ value: val(value) }))
-    else
-      setData({ value: val })
-  }, [])
+  const formError = getFieldError(key);
+  const resetErrorsChanged = useDidChange([resetErrors]);
+  const localError = useMemo(() => {
+    if (validateRequired.current && isEmpty(oData)) {
+      return requiredErrorMessage;
+    }
+    return validate(oData) || undefined;
+  }, [oData, requiredErrorMessage, validate, validateRequired])
 
   useEffect(() => {
     setRequiredField(key, required, requiredErrorMessage)
-  }, [required, requiredErrorMessage])
+  }, [key, required, requiredErrorMessage, setRequiredField])
 
   useSomeEffect(() => {
-    let errorMessage;
-    if (validateRequired && isEmpty(oData)) {
-      errorMessage = requiredErrorMessage;
-    } else {
-      errorMessage = validate(oData) || undefined;
-    }
-
-    setLocalError(errorMessage)
-    setFormError(key, errorMessage)
     updateForm(key, oData)
   }, [isDirty && data])
 
-  return [oData, setOData, isDirty, error];
+  useLazyEffect(() => {
+    setFormError(key, localError)
+  }, [localError])
+
+  return [oData, setOData, isDirty, resetErrorsChanged ? formError : localError];
 };
 
 export default useFormState;

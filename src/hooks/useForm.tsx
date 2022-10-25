@@ -5,13 +5,14 @@ import { isEmpty } from '../utils';
 import InternalFormContext from '../contexts/InternalFormContext'
 import FormContext from '../contexts/FormContext'
 
-import useLazyEffect from '../hooks/useLazyEffect'
-import useDirty from '../hooks/useDirty'
+import useLazyEffect from './useLazyEffect'
+import usePersistentCallback from './usePersistentCallback';
 
 import {
-  FormContextProps, FormData, InternalFormContextProps,
-  Key, ProviderComponent, ResetAction
-} from '../types'
+  FormContextProps, FormData,
+  InternalFormContextProps,
+  Key, ProviderComponent
+} from '../types';
 
 const useFormProvider = (
   internalFormContext: InternalFormContextProps,
@@ -38,75 +39,109 @@ const useFormProvider = (
   return (Provider as ProviderComponent)
 }
 
-const useForm = (data: FormData) => {
-  const [errors, setErrors] = useState<FormData>({})
-  const [resetAction, setResetAction] = useState<InternalFormContextProps['resetAction']>({})
+type FormOptions = {
+  formData: FormData,
+  onErrorChange?: (errorMeta: { hasErrors: boolean, errors: FormData }, ) => any,
+  onFormChange?: (formMeta: { isDirty: boolean, formData: FormData }) => any
+}
 
-  const [validateRequired, setValidateRequired] = useState<boolean>(false)
-  const requiredFields = useRef<Map<Key, any>>(new Map())
+const useForm = (
+  {
+    formData: data,
+    onErrorChange = any => any,
+    onFormChange = any => any,
+  }: FormOptions
+) => {
+  const [resetFields, setResetFields] = useState({})
+  const [resetErrors, setResetErrors] = useState({})
 
-  const iFormData = useRef(data)
-  iFormData.current = data
-
-  const [formData, setFormData, isFormDirty] = useDirty<FormData>(data, resetAction)
-  const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors])
+  const iFormData = useRef<FormData>(data)
+  const formData = useRef<FormData>(data);
 
   const updateForm: InternalFormContextProps['updateForm'] =
     useCallback((key, payload) => {
-      setFormData(currentData => ({ ...currentData, [key]: payload }))
-    }, [])
+      formData.current = { ...formData.current, [key]: payload };
+      onFormChange({ formData: formData.current, isDirty: true })
+    }, [onFormChange])
+
+  const markFormPristine = useCallback((keepChanges: boolean) => {
+    if (!keepChanges) {
+      formData.current = iFormData.current;
+    } else {
+      iFormData.current = formData.current;
+    }
+
+    setResetFields({})
+    onFormChange({ formData: formData.current, isDirty: false})
+  }, [onFormChange])
+
+  const validateRequired = useRef(false);
+  const requiredFields = useRef<Map<Key, any>>(new Map())
+  const errors = useRef<FormData>({});
 
   const setFormError: InternalFormContextProps['setFormError'] =
     useCallback((key, payload) => {
-      setErrors(currentData => {
-        const newData = { ...currentData };
-        if (payload) newData[key] = payload;
-        else delete newData[key];
-        return newData;
-      })
-    }, [])
+      let didChange = false
+      if (payload && payload !== errors.current[key]) {
+        didChange = true;
+        errors.current[key] = payload;
+      }
 
-  const markFormPristine = useCallback((keepChanges: boolean) => {
-    setResetAction({ type: keepChanges ? ResetAction.SAVE : ResetAction.CLEAR })
-  }, [])
+      if (!payload && Object.prototype.hasOwnProperty.call(errors.current, key)) {
+        didChange = true;
+        delete errors.current[key];
+      }
+
+      if (didChange) {
+        onErrorChange({
+          errors: { ...errors.current },
+          hasErrors: Object.keys(errors.current).length > 0
+        });
+      }
+    }, [onErrorChange])
 
   const isFormValid = useCallback(() => {
-    if (hasErrors) return errors;
+    if (Object.keys(errors.current).length > 0) return false;
 
-    if (!validateRequired) {
-      const errs = { ...errors };
+    if (!validateRequired.current) {
       let missingRequiredFields = false;
+      validateRequired.current = true;
 
-      setValidateRequired(true);
       requiredFields.current.forEach((errorMessage, key) => {
-        if (isEmpty(formData[key])) {
+        if (isEmpty(formData.current[key])) {
           missingRequiredFields = true;
-          setFormError(key, errorMessage)
-          errs[key] = errorMessage
+          errors.current = { ...errors.current, [key]: errorMessage };
         }
       });
 
-      return !missingRequiredFields || errs
+      return !missingRequiredFields
     }
 
     return true;
-  }, [errors, validateRequired, hasErrors, formData])
+  }, [])
 
   const handleSubmit: FormContextProps['handleSubmit'] =
-    useCallback((onSubmit, onError) => {
-      const validity = isFormValid() as (boolean | FormData);
-      if (validity === true) {
+    usePersistentCallback((onSubmit, onError) => {
+      const oldErrors = errors.current;
+
+      if (isFormValid()) {
         markFormPristine(true);
-        onSubmit(formData);
-      } else if (onError && validity) {
-        onError(validity)
+        onSubmit(formData.current);
+        return;
       }
-    }, [isFormValid, formData])
+
+      if (oldErrors !== errors.current) {
+        setResetErrors({})
+        onErrorChange({ errors: errors.current, hasErrors: true })
+      }
+
+      onError && onError(errors.current)
+  })
 
   const clearForm: FormContextProps['clearForm'] =
-    useCallback(() => {
+    usePersistentCallback(() => {
       markFormPristine(false);
-    }, [])
+    })
 
   const getPristineValue: InternalFormContextProps['getPristineValue'] =
     useCallback((key, defaultValue) => {
@@ -116,6 +151,9 @@ const useForm = (data: FormData) => {
 
       return defaultValue
     }, [])
+
+  const getFieldError: InternalFormContextProps['getFieldError'] =
+    useCallback((key) => errors.current[key], [])
 
   const setRequiredField: InternalFormContextProps['setRequiredField'] =
     useCallback((key, required, requiredErrorMessage) => {
@@ -127,16 +165,23 @@ const useForm = (data: FormData) => {
     }, [])
 
   useLazyEffect(() => {
+    iFormData.current = data
     markFormPristine(false)
   }, [data])
 
   const internalContext = useMemo(() => ({
-    resetAction, validateRequired, updateForm, setFormError, getPristineValue, setRequiredField
-  }), [resetAction, validateRequired, updateForm, setFormError,getPristineValue, setRequiredField])
+    resetFields, resetErrors, validateRequired,
+    getFieldError, getPristineValue,
+    updateForm, setFormError, setRequiredField
+  }), [
+    resetFields, resetErrors,
+    getFieldError, getPristineValue,
+    updateForm, setFormError, setRequiredField
+  ])
 
   const formContext = useMemo(() => ({
-    formData, isFormDirty, errors, hasErrors, handleSubmit, clearForm
-  }), [formData, isFormDirty, errors, hasErrors, handleSubmit, clearForm])
+    handleSubmit, clearForm
+  }), [handleSubmit, clearForm])
 
   const FormProvider = useFormProvider(internalContext, formContext);
 
