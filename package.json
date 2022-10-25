@@ -1,7 +1,7 @@
 {
   "name": "@avcs/react-form",
   "version": "3.1.5",
-  "description": "A HOC for forms, supports dirty check, reset and save functionalities of form",
+  "description": "A context & hook based react form. Supports dirty-check, validation, reset and save functionalities of form",
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
   "types": "./lib/esm/index.d.ts",
