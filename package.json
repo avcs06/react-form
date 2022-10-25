@@ -5,6 +5,7 @@
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
   "types": "./lib/esm/index.d.ts",
+  "sideEffects": false,
   "scripts": {
     "test": "jest",
     "coverage": "jest --coverage",
