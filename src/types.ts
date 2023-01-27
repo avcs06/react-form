@@ -31,9 +31,18 @@ export interface InternalFormContextProps {
   getFieldError: (key: Key) => any;
 }
 
-export interface ProviderComponent extends React.FC<PropsWithChildren<{}>> {
-  internalFormContext: InternalFormContextProps;
-  formContext: FormContextProps
+export type AnyFunction = (...args: any[]) => any
+
+export type ErrorCallback = (errorMeta: { hasErrors: boolean, errors: FormData }) => any
+export type FormCallback = (formMeta: { isDirty: boolean, formData: FormData }) => any
+
+export interface CallbackContextProps {
+  errorCallbacks: Set<ErrorCallback>;
+  formCallbacks: Set<FormCallback>
 }
 
-export type AnyFunction = (...args: any[]) => any
+export interface ProviderComponent extends React.FC<PropsWithChildren<{}>> {
+  internalFormContext: InternalFormContextProps;
+  formContext: FormContextProps;
+  callbackContext: CallbackContextProps;
+}

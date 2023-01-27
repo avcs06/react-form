@@ -1,33 +1,34 @@
-import React, { useRef, useState, useCallback, PropsWithChildren, useMemo } from 'react'
+import React, { PropsWithChildren, useCallback, useMemo, useRef, useState } from 'react';
 
+import FormContext from '../contexts/FormContext';
+import InternalFormContext from '../contexts/InternalFormContext';
 import { isEmpty } from '../utils';
-
-import InternalFormContext from '../contexts/InternalFormContext'
-import FormContext from '../contexts/FormContext'
-
-import useLazyEffect from './useLazyEffect'
-import usePersistentCallback from './usePersistentCallback';
+import useLazyEffect from './useLazyEffect';
+import { E_ARRAY } from '../constants';
 
 import {
-  FormContextProps, FormData,
-  InternalFormContextProps,
-  Key, ProviderComponent
+  CallbackContextProps, FormContextProps,
+  FormData, InternalFormContextProps, Key, ProviderComponent
 } from '../types';
+import CallbackContext from '../contexts/CallbackContext';
 
 const useFormProvider = (
   internalFormContext: InternalFormContextProps,
-  formContext: FormContextProps
+  formContext: FormContextProps,
+  callbackContext: CallbackContextProps
 ): ProviderComponent => {
   const Provider = useMemo<React.FC>(() => {
     const ProviderComponent = ({ children }: PropsWithChildren<{}>) => {
-      const { internalFormContext, formContext } = (Provider as ProviderComponent);
+      const { internalFormContext, formContext, callbackContext } = (Provider as ProviderComponent);
 
       return (
-        <InternalFormContext.Provider value={internalFormContext}>
-          <FormContext.Provider value={formContext}>
-            {children}
-          </FormContext.Provider>
-        </InternalFormContext.Provider>
+        <CallbackContext.Provider value={callbackContext}>
+          <InternalFormContext.Provider value={internalFormContext}>
+            <FormContext.Provider value={formContext}>
+              {children}
+            </FormContext.Provider>
+          </InternalFormContext.Provider>
+        </CallbackContext.Provider>
       )
     }
 
@@ -36,33 +37,40 @@ const useFormProvider = (
 
   (Provider as ProviderComponent).internalFormContext = internalFormContext;
   (Provider as ProviderComponent).formContext = formContext;
+  (Provider as ProviderComponent).callbackContext = callbackContext;
   return (Provider as ProviderComponent)
 }
 
 type FormOptions = {
   formData: FormData,
-  onErrorChange?: (errorMeta: { hasErrors: boolean, errors: FormData }, ) => any,
-  onFormChange?: (formMeta: { isDirty: boolean, formData: FormData }) => any
 }
 
 const useForm = (
   {
-    formData: data,
-    onErrorChange = any => any,
-    onFormChange = any => any,
+    formData: data
   }: FormOptions
 ) => {
+  const callbacks = useRef<CallbackContextProps>({
+    errorCallbacks: new Set(),
+    formCallbacks: new Set()
+  })
+
+  const { errorCallbacks, formCallbacks } = callbacks.current
+
   const [resetFields, setResetFields] = useState({})
   const [resetErrors, setResetErrors] = useState({})
 
   const iFormData = useRef<FormData>(data)
-  const formData = useRef<FormData>(data);
+  const formData = useRef<FormData>(data)
 
   const updateForm: InternalFormContextProps['updateForm'] =
     useCallback((key, payload) => {
       formData.current = { ...formData.current, [key]: payload };
-      onFormChange({ formData: formData.current, isDirty: true })
-    }, [onFormChange])
+      formCallbacks.forEach((formCallback) => {
+        formCallback({ formData: formData.current, isDirty: true })
+      })
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, E_ARRAY)
 
   const markFormPristine = useCallback((keepChanges: boolean) => {
     if (!keepChanges) {
@@ -72,8 +80,12 @@ const useForm = (
     }
 
     setResetFields({})
-    onFormChange({ formData: formData.current, isDirty: false})
-  }, [onFormChange])
+    formCallbacks.forEach((formCallback) => {
+      formCallback({ formData: formData.current, isDirty: false})
+    })
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, E_ARRAY)
 
   const validateRequired = useRef(false);
   const requiredFields = useRef<Map<Key, any>>(new Map())
@@ -93,12 +105,16 @@ const useForm = (
       }
 
       if (didChange) {
-        onErrorChange({
-          errors: { ...errors.current },
-          hasErrors: Object.keys(errors.current).length > 0
-        });
+        errorCallbacks.forEach(errorCallback => {
+          errorCallback({
+            errors: { ...errors.current },
+            hasErrors: Object.keys(errors.current).length > 0
+          })
+        })
       }
-    }, [onErrorChange])
+
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, E_ARRAY)
 
   const isFormValid = useCallback(() => {
     if (Object.keys(errors.current).length > 0) return false;
@@ -118,43 +134,47 @@ const useForm = (
     }
 
     return true;
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, E_ARRAY)
 
-  const handleSubmit: FormContextProps['handleSubmit'] =
-    usePersistentCallback((onSubmit, onError) => {
-      const oldErrors = errors.current;
+  const handleSubmit: FormContextProps['handleSubmit'] = useCallback((onSubmit, onError) => {
+    const oldErrors = errors.current;
 
-      if (isFormValid()) {
-        Promise.resolve(onSubmit(formData.current)).then(isSuccessful => {
-          if (isSuccessful !== false) markFormPristine(true);
-        });
-        return;
-      }
+    if (isFormValid()) {
+      Promise.resolve(onSubmit(formData.current)).then(isSuccessful => {
+        if (isSuccessful !== false) markFormPristine(true);
+      });
+      return;
+    }
 
-      if (oldErrors !== errors.current) {
-        setResetErrors({})
-        onErrorChange({ errors: errors.current, hasErrors: true })
-      }
+    if (oldErrors !== errors.current) {
+      setResetErrors({})
+      errorCallbacks.forEach(errorCallback => {
+        errorCallback({ errors: errors.current, hasErrors: true })
+      })
+    }
 
-      onError && onError(errors.current)
-  })
+    onError && onError(errors.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, E_ARRAY)
 
-  const clearForm: FormContextProps['clearForm'] =
-    usePersistentCallback(() => {
-      markFormPristine(false);
-    })
+  const clearForm: FormContextProps['clearForm'] = useCallback(() => {
+    markFormPristine(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, E_ARRAY)
 
-  const getPristineValue: InternalFormContextProps['getPristineValue'] =
-    useCallback((key, defaultValue) => {
-      if (Object.prototype.hasOwnProperty.call(iFormData.current, key)) {
-        return iFormData.current[key]
-      }
+  const getPristineValue: InternalFormContextProps['getPristineValue'] = useCallback((key, defaultValue) => {
+    if (Object.prototype.hasOwnProperty.call(iFormData.current, key)) {
+      return iFormData.current[key]
+    }
 
-      return defaultValue
-    }, [])
+    return defaultValue
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, E_ARRAY)
 
   const getFieldError: InternalFormContextProps['getFieldError'] =
-    useCallback((key) => errors.current[key], [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useCallback((key) => errors.current[key], E_ARRAY)
 
   const setRequiredField: InternalFormContextProps['setRequiredField'] =
     useCallback((key, required, requiredErrorMessage) => {
@@ -163,7 +183,8 @@ const useForm = (
       } else {
         requiredFields.current.delete(key)
       }
-    }, [])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, E_ARRAY)
 
   useLazyEffect(() => {
     iFormData.current = data
@@ -174,17 +195,15 @@ const useForm = (
     resetFields, resetErrors, validateRequired,
     getFieldError, getPristineValue,
     updateForm, setFormError, setRequiredField
-  }), [
-    resetFields, resetErrors,
-    getFieldError, getPristineValue,
-    updateForm, setFormError, setRequiredField
-  ])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [resetFields, resetErrors])
 
   const formContext = useMemo(() => ({
     handleSubmit, clearForm
-  }), [handleSubmit, clearForm])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), E_ARRAY)
 
-  const FormProvider = useFormProvider(internalContext, formContext);
+  const FormProvider = useFormProvider(internalContext, formContext, callbacks.current);
 
   return {
     ...formContext,
